@@ -31,6 +31,7 @@
 #include "spindle_control.h"
 #include "errno.h"
 #include "protocol.h"
+#include "coolant_control.h"
 
 // Define modal group internal numbers for checking multiple command violations and tracking the 
 // type of command that is called in the block. A modal group is a group of g-code commands that are
@@ -75,8 +76,9 @@ typedef struct {
   uint8_t absolute_mode;           // 0 = relative motion, 1 = absolute motion {G90, G91}
   uint8_t program_flow;            // {M0, M1, M2, M30}
   int8_t spindle_direction;        // 1 = CW, -1 = CCW, 0 = Stop {M3, M4, M5}
+  int8_t coolant_flood;
   double feed_rate, seek_rate;     // Millimeters/second
-  double position[3];              // Where the interpreter considers the tool to be at this point in the code
+  double position[4];              // Where the interpreter considers the tool to be at this point in the code
   uint8_t tool;
   int16_t spindle_speed;           // RPM/100
   uint8_t plane_axis_0, 
@@ -105,11 +107,12 @@ void gc_init()
 }
 
 // Sets g-code parser position in mm. Input in steps. Called by the system abort routine.
-void gc_set_current_position(int32_t x, int32_t y, int32_t z) 
+void gc_set_current_position(int32_t x, int32_t y, int32_t z, int32_t c)
 {
   gc.position[X_AXIS] = x/settings.steps_per_mm[X_AXIS];
   gc.position[Y_AXIS] = y/settings.steps_per_mm[Y_AXIS];
   gc.position[Z_AXIS] = z/settings.steps_per_mm[Z_AXIS]; 
+  gc.position[C_AXIS] = z/settings.steps_per_mm[C_AXIS];
 }
 
 static float to_millimeters(double value) 
@@ -135,7 +138,7 @@ uint8_t gc_execute_line(char *line)
   uint8_t absolute_override = false; // true(1) = absolute motion for this block only {G53}
   uint8_t non_modal_action = NON_MODAL_NONE; // Tracks the actions of modal group 0 (non-modal)
   
-  double target[3], offset[3];  
+  double target[4], offset[4];
   clear_vector(target); // XYZ(ABC) axes parameters.
   clear_vector(offset); // IJK Arc offsets are incremental. Value of zero indicates no change.
     
@@ -214,6 +217,8 @@ uint8_t gc_execute_line(char *line)
           case 3: gc.spindle_direction = 1; break;
           case 4: gc.spindle_direction = -1; break;
           case 5: gc.spindle_direction = 0; break;
+          case 8: gc.coolant_flood = 1; break;
+          case 9: gc.coolant_flood = 0; break;
           default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
         }            
         break;
@@ -263,6 +268,7 @@ uint8_t gc_execute_line(char *line)
       case 'X': target[X_AXIS] = to_millimeters(value); bit_true(axis_words,bit(X_AXIS)); break;
       case 'Y': target[Y_AXIS] = to_millimeters(value); bit_true(axis_words,bit(Y_AXIS)); break;
       case 'Z': target[Z_AXIS] = to_millimeters(value); bit_true(axis_words,bit(Z_AXIS)); break;
+      case 'C': target[C_AXIS] = to_millimeters(value); bit_true(axis_words,bit(C_AXIS)); break;
     }
   }
   
@@ -279,6 +285,14 @@ uint8_t gc_execute_line(char *line)
   // [M3,M4,M5]: Update spindle state
   spindle_run(gc.spindle_direction, gc.spindle_speed);
   
+  // Update coolant state
+  if (gc.coolant_flood) {
+	  coolant_flood(1);
+  	  }
+  else {
+	  coolant_flood(0);
+  }
+
   //  ([M7,M8,M9]: Coolant state should be executed here.)
   
   // [G4,G10,G28,G30,G92,G92.1]: Perform dwell, set coordinate system data, homing, or set axis offsets.
@@ -302,7 +316,7 @@ uint8_t gc_execute_line(char *line)
         int_value--; // Adjust p to be inline with row array index. 
         // Update axes defined only in block. Always in machine coordinates. Can change non-active system.
         uint8_t i;
-        for (i=0; i<=2; i++) { // Axes indices are consistent, so loop may be used.
+        for (i=0; i<=3; i++) { // Axes indices are consistent, so loop may be used.
           if ( bit_istrue(axis_words,bit(i)) ) { sys.coord_system[int_value][i] = target[i]; }
         }
       }
@@ -314,7 +328,7 @@ uint8_t gc_execute_line(char *line)
       if (axis_words) {
         // Apply absolute mode coordinate offsets or incremental mode offsets.
         uint8_t i;
-        for (i=0; i<=2; i++) { // Axes indices are consistent, so loop may be used.
+        for (i=0; i<=3; i++) { // Axes indices are consistent, so loop may be used.
           if ( bit_istrue(axis_words,bit(i)) ) {
             if (gc.absolute_mode) {
               target[i] += sys.coord_system[sys.coord_select][i] + sys.coord_offset[i];
@@ -325,10 +339,10 @@ uint8_t gc_execute_line(char *line)
             target[i] = gc.position[i];
           }
         }
-        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], settings.default_seek_rate, false);
+        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[C_AXIS], settings.default_seek_rate, false);
       }
       mc_go_home(); 
-      clear_vector(gc.position); // Assumes home is at [0,0,0]
+      clear_vector(gc.position); // Assumes home is at [0,0,0,0]
       axis_words = 0; // Axis words used. Lock out from motion modes by clearing flags.
       break;      
     case NON_MODAL_SET_COORDINATE_OFFSET:
@@ -338,7 +352,7 @@ uint8_t gc_execute_line(char *line)
         // Update axes defined only in block. Offsets current system to defined value. Does not update when
         // active coordinate system is selected, but is still active unless G92.1 disables it. 
         uint8_t i;
-        for (i=0; i<=2; i++) { // Axes indices are consistent, so loop may be used.
+        for (i=0; i<=3; i++) { // Axes indices are consistent, so loop may be used.
           if (bit_istrue(axis_words,bit(i)) ) {
             sys.coord_offset[i] = gc.position[i]-sys.coord_system[sys.coord_select][i]-target[i];
           }
@@ -373,7 +387,7 @@ uint8_t gc_execute_line(char *line)
     // absolute mode coordinate offsets or incremental mode offsets.
     // NOTE: Tool offsets may be appended to these conversions when/if this feature is added.
     uint8_t i;
-    for (i=0; i<=2; i++) { // Axes indices are consistent, so loop may be used to save flash space.
+    for (i=0; i<=3; i++) { // Axes indices are consistent, so loop may be used to save flash space.
       if ( bit_istrue(axis_words,bit(i)) ) {
         if (!absolute_override) { // Do not update target in absolute override mode
           if (gc.absolute_mode) {
@@ -393,11 +407,11 @@ uint8_t gc_execute_line(char *line)
         break;
       case MOTION_MODE_SEEK:
         if (!axis_words) { FAIL(STATUS_INVALID_COMMAND);} 
-        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], settings.default_seek_rate, false); }
+        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[C_AXIS], settings.default_seek_rate, false); }
         break;
       case MOTION_MODE_LINEAR:
         if (!axis_words) { FAIL(STATUS_INVALID_COMMAND);} 
-        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
+        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[C_AXIS],
           (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode); }
         break;
       case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
@@ -521,7 +535,7 @@ uint8_t gc_execute_line(char *line)
     // As far as the parser is concerned, the position is now == target. In reality the
     // motion control system might still be processing the action and the real tool position
     // in any intermediate location.
-    memcpy(gc.position, target, sizeof(double)*3); // gc.position[] = target[];
+    memcpy(gc.position, target, sizeof(double)*4); // gc.position[] = target[];
   }
   
   // M0,M1,M2,M30: Perform non-running program flow actions. During a program pause, the buffer may 

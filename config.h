@@ -24,35 +24,58 @@
 
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
-#define BAUD_RATE 9600
+#define BAUD_RATE 38400
 
 // Define pin-assignments
-#define STEPPING_DDR       DDRD
-#define STEPPING_PORT      PORTD
-#define X_STEP_BIT         2  // Uno Digital Pin 2
-#define Y_STEP_BIT         3  // Uno Digital Pin 3
-#define Z_STEP_BIT         4  // Uno Digital Pin 4
-#define X_DIRECTION_BIT    5  // Uno Digital Pin 5
-#define Y_DIRECTION_BIT    6  // Uno Digital Pin 6
-#define Z_DIRECTION_BIT    7  // Uno Digital Pin 7
+#define STEPPING_DDR       DDRA
+#define STEPPING_PORT      PORTA
+#define STEPPING_PIN       PINA
+#define X_STEP_BIT	0  // MEGA2560 Digital Pin 22
+#define Y_STEP_BIT	2  // MEGA2560 Digital Pin 24
+#define Z_STEP_BIT	4  // MEGA2560 Digital Pin 26
+#define C_STEP_BIT	6  // MEGA2560 Digital Pin 28
+#define X_DIRECTION_BIT	1  // MEGA2560 Digital Pin 23
+#define Y_DIRECTION_BIT	3  // MEGA2560 Digital Pin 25
+#define Z_DIRECTION_BIT	5  // MEGA2560 Digital Pin 27
+#define C_DIRECTION_BIT	7  // MEGA2560 Digital Pin 29
 
-#define STEPPERS_DISABLE_DDR    DDRB
-#define STEPPERS_DISABLE_PORT   PORTB
-#define STEPPERS_DISABLE_BIT    0  // Uno Digital Pin 8
+#define STEPPERS_DISABLE_DDR    DDRC
+#define STEPPERS_DISABLE_PORT   PORTC
+#define STEPPERS_DISABLE_BIT    7  // MEGA2560 Digital Pin 30
+// STEPPERS_DISABLE_INVERT: Set to 0 for active high stepper disable or 1
+// for active low stepper disable.
+#define STEPPERS_DISABLE_INVERT 0
 
-#define LIMIT_DDR     DDRB
-#define LIMIT_PIN     PINB
-#define X_LIMIT_BIT   1  // Uno Digital Pin 9
-#define Y_LIMIT_BIT   2  // Uno Digital Pin 10
-#define Z_LIMIT_BIT   3  // Uno Digital Pin 11
+// Limit switches are active low by default. If you have active high
+// limit switches, make sure to set the invert mask in the runtime
+// configuration.
+#define LIMIT_DDR     DDRC
+#define LIMIT_PORT    PORTC
+#define LIMIT_PIN     PINC
+#define LIMIT_PULLUP
+#define X_LIMIT_BIT   6  // MEGA2560 Digital Pin 31
+#define Y_LIMIT_BIT   5  // MEGA2560 Digital Pin 32
+#define Z_LIMIT_BIT   4  // MEGA2560 Digital Pin 33
+#define C_LIMIT_BIT   3  // MEGA2560 Digital Pin 34
 
-#define SPINDLE_ENABLE_DDR DDRB
-#define SPINDLE_ENABLE_PORT PORTB
-#define SPINDLE_ENABLE_BIT 4  // Uno Digital Pin 12
+// Comment or uncomment to determine which axes will be included in the homing
+// operation. Comment out any axes you don't have limit switches on.
+#define HOME_X
+#define HOME_Y
+//#define HOME_Z
+//#define HOME_C
 
-#define SPINDLE_DIRECTION_DDR DDRB
-#define SPINDLE_DIRECTION_PORT PORTB
-#define SPINDLE_DIRECTION_BIT 5  // Uno Digital Pin 13
+#define SPINDLE_ENABLE_DDR DDRC
+#define SPINDLE_ENABLE_PORT PORTC
+#define SPINDLE_ENABLE_BIT 2  //  MEGA2560 Digital Pin 35
+
+#define SPINDLE_DIRECTION_DDR DDRC
+#define SPINDLE_DIRECTION_PORT PORTC
+#define SPINDLE_DIRECTION_BIT 1  //  MEGA2560 Digital Pin 36
+
+#define FLOOD_COOLANT_DDR 	DDRC
+#define FLOOD_COOLANT_PORT 	PORTC
+#define FLOOD_COOLANT_BIT	0	// MEGA2560 Digital Pin 37
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters

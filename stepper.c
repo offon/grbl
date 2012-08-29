@@ -42,7 +42,8 @@ typedef struct {
   // Used by the bresenham line algorithm
   int32_t counter_x,        // Counter variables for the bresenham line tracer
           counter_y, 
-          counter_z;
+          counter_z,
+  	  	  counter_c;
   uint32_t event_count;
   uint32_t step_events_completed;  // The number of step events left in current motion
 
@@ -85,11 +86,26 @@ static volatile uint8_t busy;   // True when SIG_OUTPUT_COMPARE1A is being servi
 
 static void set_step_events_per_minute(uint32_t steps_per_minute);
 
+void st_enable() {
+	  STEPPERS_DISABLE_PORT = (STEPPERS_DISABLE_PORT & ~(1<<STEPPERS_DISABLE_BIT)) |
+	  	(STEPPERS_DISABLE_INVERT<<STEPPERS_DISABLE_BIT);
+}
+
+void st_disable() {
+	  STEPPERS_DISABLE_PORT = (STEPPERS_DISABLE_PORT & ~(1<<STEPPERS_DISABLE_BIT)) |
+	  	((1<<STEPPERS_DISABLE_BIT) ^ (STEPPERS_DISABLE_INVERT<<STEPPERS_DISABLE_BIT));
+}
+
+int st_is_enabled() {
+  return !((STEPPERS_DISABLE_DDR & (1<<STEPPERS_DISABLE_BIT)) &&
+    ((STEPPERS_DISABLE_PORT & (1<<STEPPERS_DISABLE_BIT)) ^ (STEPPERS_DISABLE_INVERT<<STEPPERS_DISABLE_BIT)));
+}
+
 // Stepper state initialization
 static void st_wake_up() 
 {
   // Initialize stepper output bits
-  out_bits = (0) ^ (settings.invert_mask); 
+  out_bits = (0) ^ (settings.invert_mask_stepdir);
   // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
   #if STEP_PULSE_DELAY > 0
     // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
@@ -100,8 +116,7 @@ static void st_wake_up()
     // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
     step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
   #endif
-  // Enable steppers by resetting the stepper disable port
-  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+  st_enable();
   // Enable stepper driver interrupt
   TIMSK1 |= (1<<OCIE1A);
 }
@@ -116,8 +131,6 @@ void st_go_idle()
   #if STEPPER_IDLE_LOCK_TIME > 0
     _delay_ms(STEPPER_IDLE_LOCK_TIME);   
   #endif
-  // Disable steppers by setting stepper disable
-  STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
 }
 
 // This function determines an acceleration velocity change every CYCLES_PER_ACCELERATION_TICK by
@@ -176,6 +189,7 @@ ISR(TIMER1_COMPA_vect)
       st.counter_x = -(current_block->step_event_count >> 1);
       st.counter_y = st.counter_x;
       st.counter_z = st.counter_x;
+      st.counter_c = st.counter_x;
       st.event_count = current_block->step_event_count;
       st.step_events_completed = 0;     
     } else {
@@ -208,6 +222,13 @@ ISR(TIMER1_COMPA_vect)
       st.counter_z -= st.event_count;
       if (out_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
       else { sys.position[Z_AXIS]++; }
+    }
+    st.counter_c += current_block->steps_c;
+    if (st.counter_c > 0) {
+      out_bits |= (1<<C_STEP_BIT);
+      st.counter_c -= st.event_count;
+      if (out_bits & (1<<C_DIRECTION_BIT)) { sys.position[C_AXIS]--; }
+      else { sys.position[C_AXIS]++; }
     }
     
     st.step_events_completed++; // Iterate step events
@@ -299,7 +320,7 @@ ISR(TIMER1_COMPA_vect)
       plan_discard_current_block();
     }
   }
-  out_bits ^= settings.invert_mask;  // Apply stepper invert mask    
+  out_bits ^= settings.invert_mask_stepdir;  // Apply stepper invert mask
   busy = false;
 }
 
@@ -310,7 +331,7 @@ ISR(TIMER1_COMPA_vect)
 ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
+  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask_stepdir & STEP_MASK);
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
 
@@ -340,8 +361,11 @@ void st_init()
 {
   // Configure directions of interface pins
   STEPPING_DDR |= STEPPING_MASK;
-  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
+  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask_stepdir;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+
+  // Disable the stepper drivers
+  st_disable();
 
   // waveform generation = 0100 = CTC
   TCCR1B &= ~(1<<WGM13);
