@@ -112,7 +112,7 @@ void gc_set_current_position(int32_t x, int32_t y, int32_t z, int32_t c)
   gc.position[X_AXIS] = x/settings.steps_per_mm[X_AXIS];
   gc.position[Y_AXIS] = y/settings.steps_per_mm[Y_AXIS];
   gc.position[Z_AXIS] = z/settings.steps_per_mm[Z_AXIS]; 
-  gc.position[C_AXIS] = z/settings.steps_per_mm[C_AXIS];
+  gc.position[C_AXIS] = c/settings.steps_per_mm[C_AXIS];
 }
 
 static float to_millimeters(double value) 

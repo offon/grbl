@@ -43,7 +43,7 @@ typedef struct {
   int32_t counter_x,        // Counter variables for the bresenham line tracer
           counter_y, 
           counter_z,
-  	  	  counter_c;
+  	  counter_c;
   uint32_t event_count;
   uint32_t step_events_completed;  // The number of step events left in current motion
 
