@@ -43,6 +43,9 @@ typedef struct {
   double mm_per_arc_segment;
   double acceleration;
   double junction_deviation;
+  uint8_t spindle_pwm;
+  uint32_t default_spindle;
+  double max_spindle;
 } settings_t;
 extern settings_t settings;
 

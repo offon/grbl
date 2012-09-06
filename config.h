@@ -24,7 +24,7 @@
 
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
-#define BAUD_RATE 38400
+#define BAUD_RATE 9600
 
 // Define pin-assignments
 #define STEPPING_DDR       DDRA
@@ -62,12 +62,12 @@
 // operation. Comment out any axes you don't have limit switches on.
 #define HOME_X
 #define HOME_Y
-//#define HOME_Z
+#define HOME_Z
 //#define HOME_C
 
-#define SPINDLE_ENABLE_DDR DDRC
-#define SPINDLE_ENABLE_PORT PORTC
-#define SPINDLE_ENABLE_BIT 2  //  MEGA2560 Digital Pin 35
+#define SPINDLE_ENABLE_DDR DDRH
+#define SPINDLE_ENABLE_PORT PORTH
+#define SPINDLE_ENABLE_BIT 3  //  MEGA2560 PWM Pin 6
 
 #define SPINDLE_DIRECTION_DDR DDRC
 #define SPINDLE_DIRECTION_PORT PORTC
@@ -128,7 +128,7 @@
 // generations. In general, the default value is more than enough for the intended CNC applications
 // of grbl, and should be on the order or greater than the size of the buffer to help with the 
 // computational efficiency of generating arcs.
-#define N_ARC_CORRECTION 25 // Integer (1-255)
+#define N_ARC_CORRECTION 40 // Integer (1-255)
 
 // Time delay increments performed during a dwell. The default value is set at 50ms, which provides
 // a maximum time delay of roughly 55 minutes, more than enough for most any application. Increasing

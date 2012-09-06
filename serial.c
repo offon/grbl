@@ -31,8 +31,9 @@
 #include "nuts_bolts.h"
 #include "protocol.h"
 
-#define RX_BUFFER_SIZE 128
-#define TX_BUFFER_SIZE 64
+#define RX_BUFFER_SIZE 256
+#define TX_BUFFER_SIZE 128
+#define RX_CHUNK_SIZE 32
 
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t rx_buffer_head = 0;
@@ -43,7 +44,7 @@ uint8_t tx_buffer_head = 0;
 volatile uint8_t tx_buffer_tail = 0;
 
 #if ENABLE_XONXOFF
-  #define RX_BUFFER_FULL 96 // XOFF high watermark
+  #define RX_BUFFER_FULL 128 // XOFF high watermark
   #define RX_BUFFER_LOW 64 // XON low watermark
   #define SEND_XOFF 1
   #define SEND_XON 2

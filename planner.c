@@ -34,7 +34,7 @@
 #include "protocol.h"
 
 // The number of linear motions that can be in the plan at any give time
-#define BLOCK_BUFFER_SIZE 30
+#define BLOCK_BUFFER_SIZE 40
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 static volatile uint8_t block_buffer_head;       // Index of the next block to be pushed

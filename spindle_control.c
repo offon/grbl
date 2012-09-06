@@ -58,5 +58,30 @@ void spindle_run(int direction, uint32_t rpm)
       spindle_stop();     
     }
     current_direction = direction;
-  }
+    }
+if (settings.spindle_pwm == 1) {
+  if (rpm > settings.max_spindle) {
+    rpm = settings.max_spindle;
+    }
+  if (direction == 0) {
+    rpm = 0;
+    OCR4A = 0;
+    TCCR4A = 0; //reset clock values
+    TCCR4B = 0; //reset clock values
+    }  
+  else if (rpm > 0 ) {
+    TCCR4A = 0; //reset clock values
+    TCCR4B = 0; //reset clock values
+    TCCR4A = (1<<COM4A1) | (1<<WGM42) | (1<<WGM41) | (1<<WGM40); //10 bit Fast PWM
+    TCCR4B = (1<<CS41); //set prescaler to 8
+    OCR4A = rpm / settings.max_spindle * 1023;
+    }
+  else {
+    TCCR4A = 0; //reset clock values
+    TCCR4B = 0; //reset clock values
+    TCCR4A = (1<<COM4A1) | (1<<WGM42) | (1<<WGM41) | (1<<WGM40); //10 bit Fast PWM
+    TCCR4B = (1<<CS41); //set prescaler to 8
+    OCR4A = settings.default_spindle / settings.max_spindle * 1023;
+    }
+}     
 }

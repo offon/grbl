@@ -36,7 +36,7 @@ settings_t settings;
 
 // Version 1 outdated settings record
 typedef struct {
-  double steps_per_mm[3];
+  double steps_per_mm[4];
   uint8_t microsteps;
   uint8_t pulse_microseconds;
   double default_feed_rate;
@@ -46,20 +46,23 @@ typedef struct {
 } settings_v1_t;
 
 // Default settings (used when resetting eeprom-settings)
-#define MICROSTEPS 8
-#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_C_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define MICROSTEPS 2
+#define DEFAULT_X_STEPS_PER_MM (40*MICROSTEPS)
+#define DEFAULT_Y_STEPS_PER_MM (40*MICROSTEPS)
+#define DEFAULT_Z_STEPS_PER_MM (40*MICROSTEPS)
+#define DEFAULT_C_STEPS_PER_MM (100*MICROSTEPS)
 #define DEFAULT_STEP_PULSE_MICROSECONDS 30
 #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
-#define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
-#define DEFAULT_FEEDRATE 500.0
+#define DEFAULT_RAPID_FEEDRATE 1500.0 // mm/min
+#define DEFAULT_FEEDRATE 750.0
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
 #define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
-#define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
+#define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)|(1<<C_STEP_BIT))
 #define DEFAULT_LIMIT_INVERT_MASK 0 // active-low endstops by default
 // #define DEFAULT_AUTO_START 1 // Boolean
+#define SPINDLE_PWM 0 // Spindle PWM NOT Active as default
+#define DEFAULT_SPINDLE_SPEED 300 // RPM
+#define MAX_SPINDLE_SPEED 1000 // RPM
 
 void settings_reset() {
   settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
@@ -74,6 +77,9 @@ void settings_reset() {
   settings.invert_mask_stepdir = DEFAULT_STEPPING_INVERT_MASK;
   settings.invert_mask_limit = DEFAULT_LIMIT_INVERT_MASK;
   settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+  settings.spindle_pwm = SPINDLE_PWM;
+  settings.default_spindle = DEFAULT_SPINDLE_SPEED;
+  settings.max_spindle = MAX_SPINDLE_SPEED;
 }
 
 void settings_dump() {
@@ -121,7 +127,7 @@ void settings_dump() {
 
   printPgmString(PSTR("$9 = "));
   printInteger(settings.invert_mask_limit);
-  printPgmString(PSTR(" (step port invert mask. binary = "));
+  printPgmString(PSTR(" (step port invert mask limit. binary = "));
   print_uint8_base2(settings.invert_mask_limit);
   printPgmString(PSTR(")\r\n"));
 
@@ -132,6 +138,18 @@ void settings_dump() {
   printPgmString(PSTR("$11 = "));
   printFloat(settings.junction_deviation);
   printPgmString(PSTR(" (cornering junction deviation in mm)\r\n"));
+  
+  printPgmString(PSTR("$12 = "));
+  printInteger(settings.spindle_pwm);
+  printPgmString(PSTR(" (PWM on Spindle: 0 = disabled, 1 = enabled)\r\n"));  
+  
+  printPgmString(PSTR("$13 = "));
+  printFloat(settings.default_spindle);
+  printPgmString(PSTR(" (default spindle speed in RPM)\r\n"));
+  
+  printPgmString(PSTR("$14 = "));
+  printFloat(settings.max_spindle);
+  printPgmString(PSTR(" (maximum spindle speed in RPM)\r\n"));
 
   printPgmString(PSTR("$1000 = "));
   printInteger(st_is_enabled());
@@ -204,6 +222,9 @@ int read_settings() {
        return(false);
      }
      //settings.auto_start = DEFAULT_AUTO_START;
+     settings.spindle_pwm = SPINDLE_PWM;
+     settings.default_spindle = DEFAULT_SPINDLE_SPEED;
+     settings.max_spindle = MAX_SPINDLE_SPEED;
      write_settings();
   } else {      
     return(false);
@@ -233,13 +254,16 @@ void settings_store_setting(int parameter, double value) {
     case 9: settings.invert_mask_limit = trunc(value); break;
     case 10: settings.acceleration = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 11: settings.junction_deviation = fabs(value); break;
+    case 12: settings.spindle_pwm = value; break;
+    case 13: settings.default_spindle = value; break;
+    case 14: settings.max_spindle = value; break;
     case 1000:
     	value ? st_enable(): st_disable();
     	if (!value) {
     		coolant_flood(0);
     		spindle_stop();
     	}
-    	return;
+    	return; break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;
