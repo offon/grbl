@@ -23,6 +23,7 @@
 #include <avr/io.h>
 #include "settings.h"
 #include "config.h"
+#include "gcode.h"
 #include "motion_control.h"
 #include <util/delay.h>
 #include <math.h>
@@ -197,5 +198,8 @@ void mc_dwell(double seconds)
 void mc_go_home()
 {
   limits_go_home();  
-  plan_set_current_position(0,0,0,0);
+  // Upon completion, reset all internal position vectors (g-code parser, planner, system)
+  gc_clear_position();
+  plan_clear_position();
+  clear_vector_double(sys.position);
 }

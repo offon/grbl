@@ -65,17 +65,24 @@
 #define HOME_Z
 //#define HOME_C
 
-#define SPINDLE_ENABLE_DDR DDRH
-#define SPINDLE_ENABLE_PORT PORTH
-#define SPINDLE_ENABLE_BIT 3  //  MEGA2560 PWM Pin 6
+#define SPINDLE_ENABLE_DDR 	DDRH
+#define SPINDLE_ENABLE_PORT 	PORTH
+#define SPINDLE_ENABLE_BIT 	3  //  MEGA2560 PWM Pin 6
 
 #define SPINDLE_DIRECTION_DDR DDRC
 #define SPINDLE_DIRECTION_PORT PORTC
 #define SPINDLE_DIRECTION_BIT 1  //  MEGA2560 Digital Pin 36
 
-#define FLOOD_COOLANT_DDR 	DDRC
-#define FLOOD_COOLANT_PORT 	PORTC
-#define FLOOD_COOLANT_BIT	0	// MEGA2560 Digital Pin 37
+#define COOLANT_FLOOD_DDR 	DDRC
+#define COOLANT_FLOOD_PORT 	PORTC
+#define COOLANT_FLOOD_BIT	0	// MEGA2560 Digital Pin 37
+
+#define ENABLE_M7 // ENABLED BY DEFAULT: Comment out to disable	
+#ifdef ENABLE_M7
+#define COOLANT_MIST_DDR   	DDRC
+#define COOLANT_MIST_PORT   	PORTC
+#define COOLANT_MIST_BIT  	2 // MEGA2560 Digital Pin 35
+#endif 
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
@@ -148,7 +155,7 @@
 // As well as, older FTDI FT232RL-based Arduinos(Duemilanove) are known to work with standard
 // terminal programs since their firmware correctly manage these XON/XOFF characters. In any
 // case, please report any successes to grbl administrators!
-#define ENABLE_XONXOFF 0 // Boolean. Default disabled.
+// #define ENABLE_XONXOFF 0 // Boolean. Default disabled.
 
 // Creates a delay between the direction pin setting and corresponding step pulse by creating
 // another interrupt (Timer2 compare) to manage it. The main Grbl interrupt (Timer1 compare) 
@@ -164,7 +171,7 @@
 // hack/solution posted in the Wiki involving inverting the stepper pin mask.
 // NOTE: If set greater than zero, step pulse delay will be compiled and enabled. Also, the 
 // total delay added with the Grbl settings pulse microseconds must not exceed 127 ms.
-#define STEP_PULSE_DELAY 0 // Step pulse delay in microseconds. Default disabled.
+// #define STEP_PULSE_DELAY 0 // Step pulse delay in microseconds. Default disabled.
 
 // ---------------------------------------------------------------------------------------
 
@@ -182,11 +189,9 @@
 #endif
 
 //  Limit step rate for homing
-#define LIMIT_STEP_RATE 1  	// (mm/min)
 
-// Debounce delay is the time delay the controller waits for a "good" signal from the limit switch.
-// A delay of 3ms to 5ms is a good starting value.
-#define LIMIT_DEBOUNCE_DELAY 5 // (milliseconds)
-
+#define LIMIT_DEBOUNCE 50  // Limit switch debounce delay (in ms)
+// #define LIMIT_INVERT_MASK 0 //
+// #define LIMIT_NORMAL_HIGH 1 // Normal low 0 or normal high 1
 
 #endif

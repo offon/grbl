@@ -36,7 +36,7 @@ settings_t settings;
 
 // Version 1 outdated settings record
 typedef struct {
-  double steps_per_mm[4];
+  double steps_per_mm[3];
   uint8_t microsteps;
   uint8_t pulse_microseconds;
   double default_feed_rate;
@@ -260,7 +260,7 @@ void settings_store_setting(int parameter, double value) {
     case 1000:
     	value ? st_enable(): st_disable();
     	if (!value) {
-    		coolant_flood(0);
+    		coolant_stop();
     		spindle_stop();
     	}
     	return; break;

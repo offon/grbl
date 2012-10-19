@@ -2,7 +2,7 @@
   coolant_control.c - coolant control methods
   Part of Grbl
 
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,20 +21,45 @@
 #include "coolant_control.h"
 #include "settings.h"
 #include "config.h"
+#include "planner.h"
 
 #include <avr/io.h>
 
+static uint8_t current_coolant_mode;
+
 void coolant_init()
 {
-  FLOOD_COOLANT_DDR |= 1<<FLOOD_COOLANT_BIT;
+  current_coolant_mode = COOLANT_DISABLE;
+  #ifdef ENABLE_M7
+    COOLANT_MIST_DDR |= (1 << COOLANT_MIST_BIT);
+  #endif
+  COOLANT_FLOOD_DDR |= (1 << COOLANT_FLOOD_BIT);
+  coolant_stop();
 }
 
-void coolant_flood(uint8_t on)
+void coolant_stop()
 {
-  if (on) {
-    FLOOD_COOLANT_PORT |= 1<<FLOOD_COOLANT_BIT;
-  }
-  else {
-    FLOOD_COOLANT_PORT &= ~(1<<FLOOD_COOLANT_BIT);
+  #ifdef ENABLE_M7
+    COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
+  #endif
+  COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
+}
+
+
+void coolant_run(uint8_t mode)
+{
+  if (mode != current_coolant_mode)
+  { 
+    plan_synchronize(); // Ensure coolant turns on when specified in program.
+    if (mode == COOLANT_FLOOD_ENABLE) { 
+      COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
+    #ifdef ENABLE_M7  
+      } else if (mode == COOLANT_MIST_ENABLE) {
+          COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
+    #endif
+    } else {
+      coolant_stop();
+    }
+    current_coolant_mode = mode;
   }
 }

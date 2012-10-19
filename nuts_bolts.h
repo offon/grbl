@@ -75,10 +75,10 @@ typedef struct {
                                  // NOTE: This may need to be a volatile variable, if problems arise. 
 
   uint8_t coord_select;          // Active work coordinate system number. Default: 0=G54.
-  double coord_system[N_COORDINATE_SYSTEM][4]; // Work coordinate systems (G54+). Stores offset from
+  double coord_system[N_COORDINATE_SYSTEM][3]; // Work coordinate systems (G54+). Stores offset from
   															 // absolute machine position in mm.
                                  // Rows: Work system number (0=G54,1=G55,...5=G59), Columns: XYZ Offsets
-  double coord_offset[4];        // Retains the G92 coordinate offset (work coordinates) relative to
+  double coord_offset[3];        // Retains the G92 coordinate offset (work coordinates) relative to
                                  // machine zero in mm.
                           
   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 
